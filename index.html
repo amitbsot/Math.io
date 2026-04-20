@@ -1,0 +1,1047 @@
+```html
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Math.io - משחק חשבון</title>
+    
+    <!-- פונט האתר -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #dcfce7; /* רקע ירוק בהיר ורגוע */
+            font-family: 'Rubik', sans-serif;
+            touch-action: none;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        /* שפת העיצוב של ThinkFun לקופסאות */
+        .score-box {
+            background: #ffffff;
+            border: 4px solid #1e293b;
+            border-radius: 16px;
+            box-shadow: 4px 4px 0px 0px #1e293b;
+            font-size: 22px;
+            font-weight: 800;
+            color: #1e293b;
+            padding: 10px 20px;
+            pointer-events: auto;
+        }
+
+        /* עיצוב כפתור ההשהיה (Pause) - נקי וללא רקע במקום השלב */
+        #pauseBtn {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            font-size: 48px;
+            cursor: pointer;
+            pointer-events: auto;
+            padding: 0;
+            margin: 0;
+            color: #1e293b;
+            transition: transform 0.1s;
+            text-shadow: 2px 2px 0px #ffffff, -2px -2px 0px #ffffff, 2px -2px 0px #ffffff, -2px 2px 0px #ffffff;
+        }
+
+        #pauseBtn:active {
+            transform: scale(0.9);
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(30, 41, 59, 0.85); /* רקע כהה למסך פתיחה/סיום */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            pointer-events: auto;
+            z-index: 100;
+        }
+
+        #pauseOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(20, 27, 38, 0.4); /* רקע שקוף ועדין */
+            backdrop-filter: blur(8px); /* אפקט טשטוש אלגנטי למראה זכוכית */
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            z-index: 110; /* מעל הממשק הרגיל */
+        }
+
+        h1 {
+            font-size: 64px;
+            margin-bottom: 10px;
+            color: #fde047;
+            /* Text outline מהאתר שלך */
+            text-shadow: -3px -3px 0 #1e293b, 3px -3px 0 #1e293b, -3px 3px 0 #1e293b, 3px 3px 0 #1e293b, 6px 6px 0 #1e293b;
+            font-weight: 900;
+            text-align: center;
+        }
+
+        p {
+            font-size: 22px;
+            margin-bottom: 40px;
+            text-align: center;
+            max-width: 80%;
+            font-weight: 600;
+            color: #f8fafc;
+        }
+
+        /* חלון הפאוז הקופץ (Modal) - עיצוב מעודן ואלגנטי */
+        .pause-box {
+            background: rgba(255, 255, 255, 0.95); /* לבן טיפה שקוף */
+            border: 4px solid #1e293b;
+            border-radius: 24px;
+            box-shadow: 6px 6px 0px 0px #1e293b;
+            padding: 30px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 90%;
+            width: 320px;
+        }
+
+        .pause-title {
+            color: #1e293b;
+            font-size: 32px; /* הוקטן מעט */
+            font-weight: 900;
+            margin: 0 0 15px 0;
+        }
+
+        /* כפתורים כלליים במסך הפתיחה */
+        button {
+            padding: 15px 50px;
+            font-size: 28px;
+            background-color: #22c55e;
+            color: white;
+            border: 4px solid #14532d;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: 0px 6px 0px 0px #166534;
+            transition: all 0.1s;
+            font-weight: 900;
+            font-family: 'Rubik', sans-serif;
+        }
+
+        button:active {
+            transform: translateY(6px);
+            box-shadow: 0px 0px 0px 0px #166534;
+        }
+
+        /* קבוצת הכפתורים בפאוז */
+        .pause-buttons-row {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 10px;
+        }
+
+        /* כפתורי סמלילים מוקטנים ואלגנטיים בתוך חלון ההשהיה */
+        .pause-box .icon-btn {
+            width: 80px;
+            height: 80px;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 4px solid #1e293b;
+            border-radius: 20px;
+            box-shadow: 0px 6px 0px 0px #1e293b;
+            transition: all 0.1s;
+        }
+
+        .pause-box .icon-btn:active {
+            transform: translateY(6px);
+            box-shadow: 0px 0px 0px 0px #1e293b;
+        }
+
+        .btn-resume {
+            background-color: #38bdf8;
+        }
+
+        .btn-quit {
+            background-color: #f1f5f9; 
+        }
+
+        /* עיצוב אלגנטי ל-Toggle תואם לשפה העיצובית */
+        .difficulty-toggle {
+            display: flex;
+            margin-bottom: 40px;
+            background: #ffffff;
+            border: 4px solid #1e293b;
+            border-radius: 20px;
+            padding: 6px;
+            box-shadow: 6px 6px 0px 0px #1e293b;
+            gap: 4px;
+        }
+
+        .difficulty-toggle input[type="radio"] {
+            display: none;
+        }
+
+        .difficulty-toggle label {
+            padding: 12px 40px;
+            font-size: 22px;
+            color: #64748b;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+            font-weight: 800;
+            border: 3px solid transparent;
+        }
+
+        .difficulty-toggle label:hover {
+            color: #1e293b;
+            background-color: #f1f5f9;
+        }
+
+        .difficulty-toggle input[type="radio"]:checked + label {
+            background-color: #facc15; 
+            color: #1e293b;
+            border: 3px solid #1e293b;
+            box-shadow: 3px 3px 0px 0px #1e293b;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-layer">
+        <div class="hud-top">
+            <div class="score-box">שיא: <span id="scoreDisplay">1</span></div>
+            <!-- כפתור הפאוז תופס את המקום של השלב -->
+            <button id="pauseBtn" class="hidden">⏸</button>
+        </div>
+    </div>
+
+    <div id="overlay">
+        <h1 id="screenTitle">Math.io</h1>
+        <p id="screenDesc">החלק את האצבע על המסך כדי לזוז.<br>אכול מספרים קטנים ממך.<br>היזהר מפעולות חילוק ומספרים גדולים!</p>
+        
+        <div class="difficulty-toggle">
+            <input type="radio" id="diff-easy" name="difficulty" value="easy" checked>
+            <label for="diff-easy">קל</label>
+            <input type="radio" id="diff-advanced" name="difficulty" value="advanced">
+            <label for="diff-advanced">מתקדם</label>
+        </div>
+
+        <button id="startBtn">התחל משחק</button>
+    </div>
+
+    <!-- מסך ההשהיה החדש -->
+    <div id="pauseOverlay" class="hidden">
+        <div class="pause-box">
+            <h2 class="pause-title">המשחק מושהה</h2>
+            <div class="pause-buttons-row">
+                <button id="resumeBtn" class="btn-resume icon-btn" title="חזור למשחק">
+                    <!-- אייקון פליי מעוצב מובנה בקוד -->
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="36" fill="white" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                </button>
+                <button id="quitBtn" class="btn-quit icon-btn" title="צא למסך הראשי">
+                    <!-- אייקון בית מעוצב מובנה בקוד -->
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="36" fill="#ef4444" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const overlay = document.getElementById('overlay');
+        const startBtn = document.getElementById('startBtn');
+        const screenTitle = document.getElementById('screenTitle');
+        const screenDesc = document.getElementById('screenDesc');
+
+        // משתנים וכפתורים לפאוז
+        const pauseBtn = document.getElementById('pauseBtn');
+        const pauseOverlay = document.getElementById('pauseOverlay');
+        const resumeBtn = document.getElementById('resumeBtn');
+        const quitBtn = document.getElementById('quitBtn');
+        let isPaused = false;
+
+        // פונקציית עיצוב מספרים - הוספת התמיכה במיליארדים (B)
+        function formatNumber(num) {
+            if (num >= 1000000000) {
+                return parseFloat((num / 1000000000).toFixed(1)) + 'B';
+            }
+            if (num >= 1000000) {
+                return parseFloat((num / 1000000).toFixed(1)) + 'M';
+            }
+            if (num >= 1000) {
+                return parseFloat((num / 1000).toFixed(1)) + 'K';
+            }
+            return num.toString();
+        }
+
+        const WORLD_SIZE = 6000;
+        const GRID_SIZE = 100;
+
+        let gameActive = false;
+        let lastTime = 0;
+        
+        let isPointerDown = false;
+        let pointerX = window.innerWidth / 2;
+        let pointerY = window.innerHeight / 2;
+
+        let currentDragDirX = 1;
+        let currentDragDirY = 0;
+        let dragStartX = 0;
+        let dragStartY = 0;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class PlayerCell {
+            constructor(x, y, value) {
+                this.x = x;
+                this.y = y;
+                this.value = value;
+                this.baseRadius = 25;
+                this.visualRadius = this.baseRadius;
+                this.targetRadius = this.baseRadius;
+                this.speed = 2.5;
+                this.color = '#38bdf8'; 
+                
+                this.dirX = 1;
+                this.dirY = 0;
+
+                this.knockbackX = 0;
+                this.knockbackY = 0;
+                this.knockbackTimer = 0;
+                
+                this.damageFlashTimer = 0;
+                this.mergeTimer = 0; 
+                this.isSplit = false; 
+            }
+
+            update(dt) {
+                this.targetRadius = this.baseRadius + (Math.log10(Math.max(1, this.value)) * 12);
+                this.visualRadius += (this.targetRadius - this.visualRadius) * 0.1;
+                
+                let baseSpd = (currentDifficulty === 'easy' && this.value < 50) ? 2.0 : 3.0;
+                this.speed = Math.max(1.8, baseSpd - ((this.visualRadius - this.baseRadius) * 0.01));
+
+                this.dirX = currentDragDirX;
+                this.dirY = currentDragDirY;
+
+                const timeScale = dt * 60;
+                let moveX = this.dirX * this.speed * timeScale;
+                let moveY = this.dirY * this.speed * timeScale;
+
+                if (this.knockbackTimer > 0) {
+                    moveX += this.knockbackX * (this.knockbackTimer / 30) * timeScale;
+                    moveY += this.knockbackY * (this.knockbackTimer / 30) * timeScale;
+                    this.knockbackTimer -= timeScale;
+                }
+
+                this.x += moveX;
+                this.y += moveY;
+
+                if (this.x < -WORLD_SIZE/2) { this.x = -WORLD_SIZE/2; this.dirX *= -1; }
+                if (this.x > WORLD_SIZE/2) { this.x = WORLD_SIZE/2; this.dirX *= -1; }
+                if (this.y < -WORLD_SIZE/2) { this.y = -WORLD_SIZE/2; this.dirY *= -1; }
+                if (this.y > WORLD_SIZE/2) { this.y = WORLD_SIZE/2; this.dirY *= -1; }
+
+                if (this.damageFlashTimer > 0) this.damageFlashTimer -= timeScale;
+                if (this.mergeTimer > 0) this.mergeTimer -= dt;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                ctx.beginPath();
+                ctx.arc(0, 0, this.visualRadius, 0, Math.PI * 2);
+                
+                if (this.damageFlashTimer > 0 && Math.floor(Date.now() / 100) % 2 === 0) {
+                    ctx.fillStyle = '#ef4444'; 
+                } else {
+                    ctx.fillStyle = this.color;
+                }
+                
+                ctx.fill();
+                
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = '#1e293b';
+                ctx.stroke();
+
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const fontSize = Math.max(16, Math.min(this.visualRadius * 0.7, 40));
+                ctx.font = `900 ${fontSize}px 'Rubik', sans-serif`;
+                
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#1e293b';
+                ctx.strokeText(formatNumber(this.value), 0, 0);
+                ctx.fillText(formatNumber(this.value), 0, 0);
+
+                ctx.restore();
+            }
+
+            takeDamage(enemyX, enemyY) {
+                if (this.isSplit) {
+                    this.value = 0; 
+                    return;
+                }
+
+                let penalty = Math.floor(this.value * 0.8);
+                if (this.value === 1) penalty = 0; 
+                this.value = penalty;
+                
+                this.damageFlashTimer = 30; 
+                
+                const dx = this.x - enemyX;
+                const dy = this.y - enemyY;
+                const dist = Math.hypot(dx, dy);
+                if (dist > 0) {
+                    this.knockbackX = (dx / dist) * 15;
+                    this.knockbackY = (dy / dist) * 15;
+                    this.knockbackTimer = 20;
+                }
+            }
+        }
+
+        class PlayerGroup {
+            constructor() {
+                this.cells = [new PlayerCell(0, 0, 1)];
+                this.totalValue = 1;
+                this.maxScore = 1; 
+                this.level = 1;
+                this.x = 0; 
+                this.y = 0;
+                this.visualRadius = 25; 
+            }
+
+            update(dt) {
+                this.totalValue = 0;
+                let sumX = 0;
+                let sumY = 0;
+                let maxRadius = 0;
+
+                for (let i = 0; i < this.cells.length; i++) {
+                    for (let j = i + 1; j < this.cells.length; j++) {
+                        let c1 = this.cells[i];
+                        let c2 = this.cells[j];
+                        let dx = c2.x - c1.x;
+                        let dy = c2.y - c1.y;
+                        let dist = Math.hypot(dx, dy);
+                        let minDist = c1.visualRadius + c2.visualRadius;
+
+                        if (c1.mergeTimer <= 0 && c2.mergeTimer <= 0) {
+                            if (dist < minDist) {
+                                c1.value += c2.value;
+                                c1.visualRadius += c2.visualRadius * 0.5;
+                                if(this.cells.length === 2) {
+                                     c1.isSplit = false;
+                                }
+                                this.cells.splice(j, 1);
+                                j--;
+                            }
+                        } else {
+                            if (dist < minDist * 0.8) {
+                                if (dist === 0) { dx = Math.random()-0.5; dy = Math.random()-0.5; dist = 1; }
+                                let force = (minDist * 0.8 - dist) * 0.2; 
+                                let nx = dx / dist;
+                                let ny = dy / dist;
+                                c1.x -= nx * force;
+                                c1.y -= ny * force;
+                                c2.x += nx * force;
+                                c2.y += ny * force;
+                            } 
+                            else if (dist > minDist) {
+                                 let force = (dist - minDist) * 0.1;
+                                 let nx = dx / dist;
+                                 let ny = dy / dist;
+                                 c1.x += nx * force;
+                                 c1.y += ny * force;
+                                 c2.x -= nx * force;
+                                 c2.y -= ny * force;
+                            }
+                        }
+                    }
+                }
+
+                for (let i = this.cells.length - 1; i >= 0; i--) {
+                    let c = this.cells[i];
+                    if (c.value <= 0) {
+                        this.cells.splice(i, 1);
+                        continue;
+                    }
+                    c.update(dt);
+                    this.totalValue += c.value;
+                    sumX += c.x;
+                    sumY += c.y;
+                    if (c.visualRadius > maxRadius) maxRadius = c.visualRadius;
+                }
+
+                if (this.cells.length > 0) {
+                    this.x = sumX / this.cells.length;
+                    this.y = sumY / this.cells.length;
+                }
+                this.visualRadius = maxRadius;
+
+                if (this.totalValue > this.maxScore) {
+                    this.maxScore = this.totalValue;
+                    scoreDisplay.innerText = formatNumber(this.maxScore);
+                }
+
+                this.checkLevel();
+
+                if (this.totalValue <= 0 || this.cells.length === 0) {
+                    gameOver();
+                }
+            }
+
+            draw(ctx) {
+                let sortedCells = [...this.cells].sort((a,b) => a.visualRadius - b.visualRadius);
+                for (let c of sortedCells) {
+                    c.draw(ctx);
+                }
+            }
+
+            splitCell(cellIndex, parts) {
+                let cell = this.cells[cellIndex];
+                if (cell.value < parts) {
+                    cell.takeDamage(cell.x, cell.y);
+                    return;
+                }
+
+                let newValue = Math.floor(cell.value / parts);
+                let remainder = cell.value % parts;
+                
+                cell.value = newValue + remainder;
+                cell.mergeTimer = 10; 
+                cell.isSplit = true; 
+
+                let baseAngle = Math.random() * Math.PI * 2;
+                
+                for (let i = 1; i < parts; i++) {
+                    let angle = baseAngle + (i * (Math.PI * 2) / parts);
+                    let offsetX = Math.cos(angle) * (cell.visualRadius + 5);
+                    let offsetY = Math.sin(angle) * (cell.visualRadius + 5);
+                    
+                    let newCell = new PlayerCell(cell.x + offsetX, cell.y + offsetY, newValue);
+                    newCell.mergeTimer = 10;
+                    newCell.isSplit = true; 
+                    
+                    this.cells.push(newCell);
+                }
+            }
+
+            checkLevel() {
+                let newLevel = 1;
+                if (this.maxScore >= 10) newLevel = 2;
+                if (this.maxScore >= 50) newLevel = 3;
+                if (this.maxScore >= 200) newLevel = 4;
+                if (this.maxScore >= 500) newLevel = 5;
+
+                if (newLevel !== this.level) {
+                    this.level = newLevel;
+                    for(let c of this.cells) c.visualRadius += 5;
+                }
+            }
+        }
+
+        class Pellet {
+            constructor(x, y, value, type = 'number') {
+                this.x = x;
+                this.y = y;
+                this.value = value;
+                this.type = type; 
+                
+                this.baseX = x;
+                this.baseY = y;
+                this.offsetX = Math.random() * 1000;
+                this.offsetY = Math.random() * 1000;
+
+                // מהירות שיוט אקראית ואיטית כדי שיוכלו לנוע ולהיפגש
+                this.vx = (Math.random() - 0.5) * 40;
+                this.vy = (Math.random() - 0.5) * 40;
+
+                this.setupVisuals();
+            }
+
+            setupVisuals() {
+                if (this.type === 'number') {
+                    this.radius = 25 + (Math.log10(Math.max(1, this.value)) * 12);
+                    const colors = ['#facc15', '#4ade80', '#c084fc', '#fb923c', '#f472b6', '#60a5fa'];
+                    this.color = colors[Math.floor(Math.random() * colors.length)];
+                } else if (this.type === 'mult') {
+                    this.radius = 32; 
+                    this.color = '#fbbf24'; // צבע זהב לכפול 2
+                    this.text = 'x' + this.value; 
+                } else if (this.type === 'div') {
+                    this.radius = 35; 
+                    this.color = '#800020'; // צבע אדום בורדו כבקשתך
+                    this.text = '÷' + formatNumber(this.value); 
+                }
+            }
+
+            update(dt, playerScore = 1) {
+                let speedMult = 1.0;
+                let hoverRange = 15;
+
+                // בשלבים מתקדמים מעל 10K, הכדורים ינועו מעט מהר יותר ועל טווח גדול יותר
+                if (playerScore >= 10000) {
+                    speedMult = 2.0; // מהירות תנועה כפולה (עדיין איטית יחסית אבל מורגשת)
+                    hoverRange = 30; // רדיוס שיוט רחב יותר
+                }
+
+                // תנועה חופשית במרחב
+                this.baseX += this.vx * speedMult * dt;
+                this.baseY += this.vy * speedMult * dt;
+
+                // חזרה מגבולות המפה למניעת בריחה של כדורים
+                if (this.baseX < -WORLD_SIZE/2) { this.baseX = -WORLD_SIZE/2; this.vx *= -1; }
+                if (this.baseX > WORLD_SIZE/2) { this.baseX = WORLD_SIZE/2; this.vx *= -1; }
+                if (this.baseY < -WORLD_SIZE/2) { this.baseY = -WORLD_SIZE/2; this.vy *= -1; }
+                if (this.baseY > WORLD_SIZE/2) { this.baseY = WORLD_SIZE/2; this.vy *= -1; }
+
+                const time = Date.now() * 0.001;
+                this.x = this.baseX + Math.sin(time + this.offsetX) * hoverRange;
+                this.y = this.baseY + Math.cos(time + this.offsetY) * hoverRange;
+            }
+
+            draw(ctx, playerMaxVal) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+
+                ctx.lineWidth = 4;
+                if (this.type === 'number' && this.value > playerMaxVal) {
+                    ctx.strokeStyle = '#dc2626'; 
+                    ctx.lineWidth = 6;
+                } else {
+                    ctx.strokeStyle = '#1e293b'; 
+                }
+                ctx.stroke();
+
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const fontSize = Math.max(16, Math.min(this.radius * 0.6, 40));
+                ctx.font = `900 ${fontSize}px 'Rubik', sans-serif`;
+                
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#1e293b';
+                
+                let textToDraw = (this.type === 'number') ? formatNumber(this.value) : this.text;
+                ctx.strokeText(textToDraw, 0, 0);
+                ctx.fillText(textToDraw, 0, 0);
+
+                ctx.restore();
+            }
+        }
+
+        let player;
+        let pellets = [];
+        let MAX_PELLETS = 200; 
+        let cameraZoom = 1; 
+        let currentDifficulty = 'easy'; 
+
+        function initGame() {
+            const diffRadios = document.getElementsByName('difficulty');
+            for (let radio of diffRadios) {
+                if (radio.checked) {
+                    currentDifficulty = radio.value;
+                    break;
+                }
+            }
+            
+            MAX_PELLETS = (currentDifficulty === 'easy') ? 20 : 200;
+
+            player = new PlayerGroup();
+            pellets = [];
+            cameraZoom = 1;
+            scoreDisplay.innerText = formatNumber(player.maxScore);
+            
+            let initialPellets = (currentDifficulty === 'easy') ? 15 : 150;
+            for (let i = 0; i < initialPellets; i++) {
+                spawnPellet(player.x, player.y, 1500);
+            }
+
+            gameActive = true;
+            isPaused = false;
+            
+            overlay.classList.add('hidden');
+            pauseBtn.classList.remove('hidden'); 
+            
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function spawnPellet(centerX, centerY, spawnRadius) {
+            if (pellets.length >= MAX_PELLETS) return;
+
+            let x, y;
+            let validPosition = false;
+            let attempts = 0;
+
+            while (!validPosition && attempts < 15) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = 200 + Math.random() * spawnRadius;
+                x = centerX + Math.cos(angle) * r;
+                y = centerY + Math.sin(angle) * r;
+
+                if (x < -WORLD_SIZE/2 || x > WORLD_SIZE/2 || y < -WORLD_SIZE/2 || y > WORLD_SIZE/2) {
+                    attempts++;
+                    continue;
+                }
+
+                validPosition = true;
+                for (let p of pellets) {
+                    const dist = Math.hypot(x - p.x, y - p.y);
+                    if (dist < 120) { 
+                        validPosition = false;
+                        break;
+                    }
+                }
+                attempts++;
+            }
+
+            if (!validPosition) return;
+
+            let val = 1;
+            let type = 'number';
+            let isSpecial = false;
+
+            if (player.level >= 2) {
+                const rand = Math.random();
+                let multChance = (currentDifficulty === 'advanced') ? 0.05 : 0.03;
+                let divChance = 0;
+
+                if (player.level >= 3) {
+                    divChance = 0.15 + ((player.level - 3) * 0.05); 
+                    if (currentDifficulty === 'easy') divChance *= 0.5;
+                }
+
+                if (rand < multChance) { 
+                    type = 'mult'; val = 2; isSpecial = true; 
+                }
+                else if (rand < multChance + divChance) { 
+                    type = 'div'; val = Math.floor(Math.random() * 2) + 2; isSpecial = true; 
+                }
+            }
+
+            if (!isSpecial) {
+                // יחס מעודכן לבקשתך: 33% קטנים (אכילים), 66% גדולים (מסוכנים)
+                if (Math.random() < 0.33) {
+                    val = Math.floor(Math.random() * player.maxScore) + 1;
+                } else {
+                    let minDanger = player.maxScore + 1;
+                    let maxDanger = (currentDifficulty === 'easy') 
+                                   ? player.maxScore + Math.max(2, Math.floor(player.maxScore * 0.5)) 
+                                   : player.maxScore + Math.max(5, Math.floor(player.maxScore * 1.5));
+                    val = Math.floor(Math.random() * (maxDanger - minDanger + 1)) + minDanger;
+                }
+            }
+
+            pellets.push(new Pellet(x, y, val, type));
+        }
+
+        function gameOver() {
+            gameActive = false;
+            pauseBtn.classList.add('hidden'); 
+            screenTitle.innerText = "המשחק נגמר!";
+            screenTitle.style.color = "#ef4444";
+            screenDesc.innerHTML = `השיא שלך בסיבוב הזה: <br><span style="color:#fde047; font-weight:900; font-size:36px; text-shadow: -2px -2px 0 #1e293b, 2px -2px 0 #1e293b, -2px 2px 0 #1e293b, 2px 2px 0 #1e293b, 4px 4px 0 #1e293b;">${formatNumber(player.maxScore)}</span><br>אל תתייאש, נסה שוב!`;
+            startBtn.innerText = "שחק שוב";
+            overlay.classList.remove('hidden');
+        }
+
+        pauseBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            if (!gameActive || isPaused) return;
+            isPaused = true;
+            pauseOverlay.classList.remove('hidden');
+            pauseBtn.classList.add('hidden');
+        });
+
+        resumeBtn.addEventListener('click', () => {
+            isPaused = false;
+            pauseOverlay.classList.add('hidden');
+            pauseBtn.classList.remove('hidden');
+            lastTime = performance.now(); 
+            requestAnimationFrame(gameLoop);
+        });
+
+        quitBtn.addEventListener('click', () => {
+            isPaused = false;
+            gameActive = false;
+            pauseOverlay.classList.add('hidden');
+            
+            screenTitle.innerText = "Math.io";
+            screenTitle.style.color = "#fde047";
+            screenDesc.innerHTML = "החלק את האצבע על המסך כדי לזוז.<br>אכול מספרים קטנים ממך.<br>היזהר מפעולות חילוק ומספרים גדולים!";
+            startBtn.innerText = "התחל משחק";
+            overlay.classList.remove('hidden');
+        });
+
+
+        function gameLoop(currentTime) {
+            if (!gameActive) return;
+            if (isPaused) return; 
+
+            if (lastTime === 0) lastTime = currentTime;
+            let dt = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+            if (dt > 0.1) dt = 0.016; 
+
+            player.update(dt);
+
+            let spawnRate = (currentDifficulty === 'easy') ? 0.05 : 0.3;
+            if (Math.random() < spawnRate) {
+                spawnPellet(player.x, player.y, (window.innerWidth / cameraZoom) * 1.5);
+            }
+
+            // --- לוגיקת התמזגות כדורים יריבים במגרש ---
+            for (let i = 0; i < pellets.length; i++) {
+                let p1 = pellets[i];
+                if (p1.type !== 'number') continue; // מתמזגים רק מספרי-מטרה
+
+                for (let j = i + 1; j < pellets.length; j++) {
+                    let p2 = pellets[j];
+                    if (p2.type !== 'number') continue;
+
+                    let dx = p1.x - p2.x;
+                    let dy = p1.y - p2.y;
+                    let dist = Math.hypot(dx, dy);
+
+                    // אם שני כדורים נוגעים אחד בשני
+                    if (dist < p1.radius + p2.radius) {
+                        p1.value += p2.value; // הוספת הערך
+                        p1.setupVisuals(); // עדכון הגודל והטקסט של הכדור הממוזג
+                        
+                        // מיקום הכדור הממוזג באמצע
+                        p1.baseX = (p1.baseX + p2.baseX) / 2;
+                        p1.baseY = (p1.baseY + p2.baseY) / 2;
+
+                        pellets.splice(j, 1); // מחיקת הכדור השני
+                        j--; // עדכון אינדקס
+                    }
+                }
+            }
+            // ------------------------------------------
+
+            for (let i = pellets.length - 1; i >= 0; i--) {
+                let p = pellets[i];
+                // מעבירים לפונקציה את השיא הנוכחי כדי לדעת אם אנחנו בשלב מתקדם
+                p.update(dt, player.maxScore);
+
+                const distToCenter = Math.hypot(player.x - p.x, player.y - p.y);
+                if (distToCenter > (window.innerWidth / cameraZoom) * 2) {
+                    pellets.splice(i, 1);
+                    continue;
+                }
+
+                let hit = false;
+                for (let c = 0; c < player.cells.length; c++) {
+                    let cell = player.cells[c];
+                    const distToCell = Math.hypot(cell.x - p.x, cell.y - p.y);
+                    
+                    if (distToCell < cell.visualRadius + p.radius) {
+                        if (p.type === 'number') {
+                            if (cell.value >= p.value) {
+                                cell.value += p.value;
+                                hit = true;
+                            } else {
+                                if (cell.knockbackTimer <= 0) { 
+                                    cell.takeDamage(p.x, p.y);
+                                }
+                            }
+                        } else if (p.type === 'mult') {
+                            cell.value *= p.value;
+                            hit = true;
+                        } else if (p.type === 'div') {
+                            player.splitCell(c, p.value);
+                            hit = true;
+                        }
+
+                        if (hit) {
+                            pellets.splice(i, 1);
+                            break; 
+                        }
+                    }
+                }
+            }
+
+            drawWorld();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function drawWorld() {
+            ctx.fillStyle = '#dcfce7';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            
+            let targetZoom = 1;
+            if (player.visualRadius > 40) {
+                targetZoom = 40 / player.visualRadius;
+                targetZoom = Math.max(0.4, targetZoom); 
+            }
+            cameraZoom += (targetZoom - cameraZoom) * 0.05; 
+
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.scale(cameraZoom, cameraZoom);
+            ctx.translate(-player.x, -player.y);
+
+            ctx.strokeStyle = '#bbf7d0';
+            ctx.lineWidth = 2;
+            
+            const visibleWidth = canvas.width / cameraZoom;
+            const visibleHeight = canvas.height / cameraZoom;
+
+            const startX = Math.floor((player.x - visibleWidth/2) / GRID_SIZE) * GRID_SIZE;
+            const startY = Math.floor((player.y - visibleHeight/2) / GRID_SIZE) * GRID_SIZE;
+
+            ctx.beginPath();
+            for (let x = startX; x < player.x + visibleWidth/2; x += GRID_SIZE) {
+                ctx.moveTo(x, player.y - visibleHeight/2);
+                ctx.lineTo(x, player.y + visibleHeight/2);
+            }
+            for (let y = startY; y < player.y + visibleHeight/2; y += GRID_SIZE) {
+                ctx.moveTo(player.x - visibleWidth/2, y);
+                ctx.lineTo(player.x + visibleWidth/2, y);
+            }
+            ctx.stroke();
+
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 8;
+            ctx.strokeRect(-WORLD_SIZE/2, -WORLD_SIZE/2, WORLD_SIZE, WORLD_SIZE);
+
+            let maxPlayerVal = 1;
+            for(let c of player.cells) if(c.value > maxPlayerVal) maxPlayerVal = c.value;
+
+            let sortedPellets = [...pellets].sort((a, b) => b.radius - a.radius);
+            for (let p of sortedPellets) {
+                p.draw(ctx, maxPlayerVal);
+            }
+            
+            player.draw(ctx);
+
+            ctx.restore();
+        }
+
+        function handlePointerDown(e) {
+            isPointerDown = true;
+            updatePointerPos(e);
+            dragStartX = pointerX;
+            dragStartY = pointerY;
+        }
+
+        function handlePointerMove(e) {
+            if (isPointerDown) {
+                updatePointerPos(e);
+                
+                const dx = pointerX - dragStartX;
+                const dy = pointerY - dragStartY;
+                const dist = Math.hypot(dx, dy);
+                
+                if (dist > 5) { 
+                    currentDragDirX = dx / dist;
+                    currentDragDirY = dy / dist;
+                    
+                    if (dist > 50) {
+                        dragStartX = pointerX - (currentDragDirX * 50);
+                        dragStartY = pointerY - (currentDragDirY * 50);
+                    }
+                }
+            }
+        }
+
+        function handlePointerUp() {
+            isPointerDown = false;
+        }
+
+        function updatePointerPos(e) {
+            pointerX = e.clientX;
+            pointerY = e.clientY;
+        }
+
+        canvas.addEventListener('pointerdown', handlePointerDown);
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+
+        startBtn.addEventListener('click', initGame);
+
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+```
